@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hitori-Escape Map｜圣地巡礼 v5</title>
+    <title>Hitori-Escape Map｜圣地巡礼 v6</title>
 
     <!-- MapLibre GL JS（开源矢量地图内核，免 token） -->
     <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
@@ -336,7 +336,7 @@
 <div id="map"></div>
 
 <div class="brand">
-    Hitori-Escape Map <span>圣地巡礼 · v5</span>
+    Hitori-Escape Map <span>圣地巡礼 · v6</span>
 </div>
 
 <div class="search-wrap">
@@ -381,11 +381,16 @@
     </div>
     <div class="dir-search"><input id="dirFilter" type="text" placeholder="筛选：地点 / 地址 / 出处备注（如 MV）" /></div>
     <div class="dir-data-actions">
-        <button id="btnExportSpots" class="data-btn">⬇️ 导出点位 JSON</button>
-        <button id="btnImportSpots" class="data-btn">⬆️ 导入点位 JSON</button>
-        <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
+        <button id="btnExportSpots" class="data-btn">⬇️ 导出点位</button>
+        <button id="btnImportSpots" class="data-btn">⬆️ 导入点位</button>
     </div>
-    <div class="dir-data-hint">公共点位来自同目录 spots.json；本机新增 / 修改仅保存在当前浏览器。</div>
+    <div class="dir-data-actions">
+        <button id="btnExportMeta" class="data-btn">⬇️ 导出县备注</button>
+        <button id="btnImportMeta" class="data-btn">⬆️ 导入县备注</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
+        <input type="file" id="importMetaFile" accept=".json,application/json" style="display:none" />
+    </div>
+    <div class="dir-data-hint">公共数据来自同目录 spots.json 与 prefectureMeta.json；本机新增 / 修改仅保存在当前浏览器。</div>
     <div class="dir-body" id="dirBody"></div>
 </aside>
 
@@ -408,8 +413,10 @@
     const STORAGE_KEY_SPOTS = 'hitori_escape_spots';
     const STORAGE_KEY_REGIONS = 'hitori_escape_regions';
     const STORAGE_KEY_PUBLIC_CACHE = 'hitori_escape_public';
+    const STORAGE_KEY_META_CACHE = 'hitori_escape_meta';
     const STORAGE_KEY_DELETED = 'hitori_escape_deleted';
     const PUBLIC_JSON_URL = 'spots.json';
+    const META_JSON_URL = 'prefectureMeta.json';
 
     function readJSON(key, fallback) {
         try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -426,19 +433,28 @@
             throw e;
         }
     }
-    function loadRegions() { return readJSON(STORAGE_KEY_REGIONS, {}); }
-    function saveRegions(regions) {
-        try { localStorage.setItem(STORAGE_KEY_REGIONS, JSON.stringify(regions)); }
+    function saveLocalMeta(meta) {
+        try { localStorage.setItem(STORAGE_KEY_REGIONS, JSON.stringify(meta)); }
         catch (e) { alert('地区备注保存失败：本地存储空间已满。'); }
     }
 
     let publicSpots = [];
     let localSpots = readJSON(STORAGE_KEY_SPOTS, []);
     let deletedIds = readJSON(STORAGE_KEY_DELETED, []);
-    let regionNotes = loadRegions();
+    let publicMeta = {};
+    let localMeta = readJSON(STORAGE_KEY_REGIONS, {});
     let spots = []; // 生效中的合并结果
     let selectedSpotId = null;
     let pickMode = false;
+
+    /* 县备注：公共 prefectureMeta.json + 本机覆盖，合并后生效 */
+    function effectiveMeta() {
+        return Object.assign({}, publicMeta, localMeta);
+    }
+    function metaNote(pref) {
+        const m = effectiveMeta()[pref];
+        return (m && typeof m === 'object' ? m.desc : m) || '';
+    }
 
     function uid() {
         return 'spot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
@@ -954,7 +970,7 @@
     /* ---------- 地区备注面板 ---------- */
     function renderRegionPanel(prefName) {
         const defaultNote = prefName + '：';
-        const savedNote = regionNotes[prefName] || defaultNote;
+        const savedNote = metaNote(prefName) || defaultNote;
 
         const regionSpots = spots.filter(function (s) {
             return (s.pref || prefectureAt(s.lng, s.lat)) === prefName;
@@ -995,11 +1011,13 @@
         };
         document.getElementById('regionSave').onclick = function () {
             const newNote = textarea.value.trim();
-            regionNotes[prefName] = newNote;
-            saveRegions(regionNotes);
-            descDiv.textContent = newNote;
+            if (newNote) localMeta[prefName] = newNote;
+            else delete localMeta[prefName];
+            saveLocalMeta(localMeta);
+            descDiv.textContent = newNote || defaultNote;
             editDiv.style.display = 'none';
             document.getElementById('regionEditBtn').style.display = 'block';
+            renderDirectory();
         };
         document.getElementById('regionCancel').onclick = function () {
             editDiv.style.display = 'none';
@@ -1066,7 +1084,7 @@
             if (!list.length) return;
             anyVisible = true;
 
-            const note = regionNotes[pref] || '';
+            const note = metaNote(pref);
             const group = document.createElement('div');
             group.className = 'dir-group';
 
@@ -1122,6 +1140,14 @@
     if (btnExportSpots) btnExportSpots.onclick = exportSpots;
     if (btnImportSpots) btnImportSpots.onclick = function () { importFile.click(); };
     if (importFile) importFile.onchange = function () { importSpots(importFile.files[0]); importFile.value = ''; };
+
+    /* 导出 / 导入县备注 JSON */
+    const btnExportMeta = document.getElementById('btnExportMeta');
+    const btnImportMeta = document.getElementById('btnImportMeta');
+    const importMetaFile = document.getElementById('importMetaFile');
+    if (btnExportMeta) btnExportMeta.onclick = exportMeta;
+    if (btnImportMeta) btnImportMeta.onclick = function () { importMetaFile.click(); };
+    if (importMetaFile) importMetaFile.onchange = function () { importMeta(importMetaFile.files[0]); importMetaFile.value = ''; };
 
     /* 图例：分类颜色说明 */
     function renderLegend() {
@@ -1209,6 +1235,17 @@
         rebuildSpots();
     }
 
+    function downloadJSON(filename, data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
     /* 导出当前全部点位为 spots.json（维护者用：替换部署目录里的同名文件） */
     function exportSpots() {
         const data = spots.map(function (s) {
@@ -1216,14 +1253,7 @@
             delete out._origin;
             return out;
         });
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'spots.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
+        downloadJSON('spots.json', data);
     }
 
     /* 导入：读取本地 spots.json，作为公共点位载入并缓存 */
@@ -1249,6 +1279,58 @@
         reader.readAsText(file, 'utf-8');
     }
 
+    /* ---------- 都道府县备注元信息（prefectureMeta.json） ---------- */
+    function normalizeMeta(data) {
+        const out = {};
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+            Object.keys(data).forEach(function (k) {
+                const v = data[k];
+                out[k] = (v && typeof v === 'object') ? v : { desc: String(v || '') };
+            });
+        }
+        return out;
+    }
+
+    async function loadMeta() {
+        try {
+            const res = await fetch(META_JSON_URL, { cache: 'no-cache' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            publicMeta = normalizeMeta(await res.json());
+            writeJSON(STORAGE_KEY_META_CACHE, publicMeta);
+        } catch (e) {
+            publicMeta = readJSON(STORAGE_KEY_META_CACHE, {});
+        }
+    }
+
+    /* 导出县备注为 prefectureMeta.json，随 spots.json 一起部署到仓库根目录 */
+    function exportMeta() {
+        const eff = effectiveMeta();
+        const data = {};
+        Object.keys(eff).forEach(function (k) {
+            const v = eff[k];
+            data[k] = (v && typeof v === 'object') ? v : { desc: String(v || '') };
+        });
+        downloadJSON('prefectureMeta.json', data);
+    }
+
+    function importMeta(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+            try {
+                const data = JSON.parse(reader.result);
+                if (Array.isArray(data) || typeof data !== 'object') throw new Error('文件内容应为县备注对象');
+                publicMeta = normalizeMeta(data);
+                writeJSON(STORAGE_KEY_META_CACHE, publicMeta);
+                renderDirectory();
+                alert('已导入 ' + Object.keys(publicMeta).length + ' 条县备注。');
+            } catch (e) {
+                alert('导入失败：' + (e.message || e));
+            }
+        };
+        reader.readAsText(file, 'utf-8');
+    }
+
     /* 本地旧格式数据补全 */
     localSpots = normalizeAll(localSpots);
     saveLocalSpots(localSpots);
@@ -1257,7 +1339,7 @@
     map.on('style.load', function () { renderLayers(); renderMarkers(); renderDirectory(); });
     map.on('zoomend', updateLabelVisibility);
 
-    loadPublic().then(function () {
+    Promise.all([loadPublic(), loadMeta()]).then(function () {
         refreshSpotsSource();
         renderDirectory();
     });
