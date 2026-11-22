@@ -279,6 +279,22 @@
         .legend-cat { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
         .legend-cat i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
 
+        /* 点位只读详情 */
+        .view-row { display: flex; gap: 10px; font-size: 13px; margin-bottom: 8px; line-height: 1.5; }
+        .view-label { flex: none; width: 72px; color: var(--text-muted); font-size: 12px; padding-top: 1px; }
+        .view-row .cat-dot { margin-right: 4px; }
+        .view-source { background: rgba(0, 0, 0, .06); padding: 10px 12px; border-radius: 10px; margin: 10px 0; font-size: 13px; line-height: 1.6; }
+        .view-source .view-label { display: block; width: auto; margin-bottom: 4px; font-size: 11px; }
+        .view-source div { white-space: pre-line; word-break: break-word; }
+        .photo-hero { display: grid; gap: 10px; margin: 14px 0; }
+        .photo-hero.single { grid-template-columns: 1fr; }
+        .photo-hero.multi { grid-template-columns: 1fr 1fr; }
+        .photo-hero .gallery-img {
+            width: 100%; border-radius: 14px; max-height: 260px; min-height: 140px;
+            object-fit: cover; background: rgba(0, 0, 0, .05); box-shadow: 0 2px 10px rgba(0, 0, 0, .12);
+        }
+        .photo-hero.single .gallery-img { max-height: 300px; }
+
         /* 多图画廊 */
         .photo-gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
         .gallery-img {
@@ -845,7 +861,8 @@
         el.querySelector('.spot-dot').onclick = function (ev) {
             ev.stopPropagation();
             if (pickMode) return;
-            renderEditPanel(s);
+            map.flyTo({ center: [s.lng, s.lat], zoom: Math.max(map.getZoom(), 13), duration: 1.0 });
+            renderViewPanel(s);
         };
         return el;
     }
@@ -1047,25 +1064,23 @@
         const color = spotColor(spot);
         const photos = spotPhotos(spot);
         const photoHtml = photos.length
-            ? `<div class="photo-gallery">${photos.map(function (p) {
+            ? `<div class="photo-hero ${photos.length > 1 ? 'multi' : 'single'}">${photos.map(function (p) {
                 return `<img class="gallery-img" src="${escapeAttr(p)}" alt="实景照片" />`;
             }).join('')}</div>`
             : '';
         panelContent.innerHTML =
-            photoHtml +
             `<div class="panel-badge">巡礼地点</div>` +
             `<div class="panel-title">${escapeHtml(spot.name || '未命名地点')}</div>` +
-            `<div class="panel-cat"><span class="cat-dot" style="background:${escapeAttr(color)}"></span>${meta.emoji} ${escapeHtml(meta.label)}</div>` +
-            (spot.pref ? `<div class="panel-addr">📍 ${escapeHtml(spot.pref)}</div>` : '') +
-            (spot.address ? `<div class="panel-addr">${escapeHtml(spot.address)}</div>` : '') +
-            (spot.source ? `<div class="panel-source">📖 ${escapeHtml(spot.source)}</div>` : '') +
+            `<div class="view-row"><span class="view-label">分类</span><span><span class="cat-dot" style="background:${escapeAttr(color)}"></span> ${meta.emoji} ${escapeHtml(meta.label)}</span></div>` +
+            (spot.pref ? `<div class="view-row"><span class="view-label">都道府县</span><span>${escapeHtml(spot.pref)}</span></div>` : '') +
+            (spot.address ? `<div class="view-row"><span class="view-label">地址</span><span>${escapeHtml(spot.address)}</span></div>` : '') +
+            (spot.source ? `<div class="view-source"><span class="view-label">出处 / 备注</span><div>${escapeHtml(spot.source)}</div></div>` : '') +
+            photoHtml +
             `<div class="btn-group">
                 <button class="btn-edit" id="btnEdit">✏️ 编辑</button>
-                <button class="btn-delete" id="btnDelete">🗑 删除</button>
              </div>`;
         openPanel();
         document.getElementById('btnEdit').onclick = function () { renderEditPanel(spot); };
-        document.getElementById('btnDelete').onclick = function () { deleteSpot(spot.id); };
     }
 
     function categoryOptions(selected) {
