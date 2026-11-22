@@ -183,6 +183,7 @@
             border-radius: 50%; cursor: pointer; font-size: 14px;
         }
         .dir-search { padding: 0 16px 10px; }
+        .dir-toggle-row { display: flex; align-items: center; gap: 8px; padding: 0 16px 10px; font-size: 12px; cursor: pointer; }
         .dir-search input {
             width: 100%; padding: 8px 12px; border: 1px solid rgba(0, 0, 0, .12);
             border-radius: 10px; background: rgba(255, 255, 255, .6);
@@ -528,6 +529,7 @@
         <button id="dirClose">✕</button>
     </div>
     <div class="dir-search"><input id="dirFilter" type="text" placeholder="筛选：地点 / 地址 / 出处备注（如 MV）" /></div>
+    <label class="dir-toggle-row"><input type="checkbox" id="toggleShortLabel"> 地图标签精简（≤10字）</label>
     <div class="dir-data-actions">
         <button id="btnDataMenu" class="data-btn data-toggle">💾 导入导出数据<span class="caret">▾</span></button>
         <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
@@ -584,7 +586,7 @@
             </div>
         </div>
         <div class="sched-list" id="schedList"></div>
-        <div class="sched-footer">持续更新补充</div>
+        <div class="sched-footer">持续更新中</div>
     </div>
     <div class="sched-drawer-footer">
         <div class="dir-data-actions">
@@ -620,6 +622,7 @@
     const STORAGE_KEY_SCHEDULE = 'hitori_escape_schedule';
     const STORAGE_KEY_SCHEDULE_CACHE = 'hitori_escape_schedule_cache';
     const STORAGE_KEY_SCHEDULE_DELETED = 'hitori_escape_schedule_deleted';
+    const STORAGE_KEY_LABEL_SHORT = 'hitori_escape_label_short';
     const PUBLIC_JSON_URL = 'spots.json';
     const META_JSON_URL = 'prefectureMeta.json';
     const SCHEDULE_JSON_URL = 'schedule.json';
@@ -655,6 +658,16 @@
     let pickEditSpot = null; // 编辑面板中进入“地图重新选点”时待更新的地点
     let pickSched = null; // 日程表单中进入“地图重新选点”时待更新的场次（新增时为 null）
     const PICK_BANNER_TEXT = '点击地图任意位置定位新地点…';
+    let labelShort = readJSON(STORAGE_KEY_LABEL_SHORT, true);
+
+    // 地图标签精简：超出 maxLen 字符时截断并加省略号；完整名称仍用于悬浮提示与各面板
+    function shortLabel(text, maxLen) {
+        maxLen = maxLen || 10;
+        if (text == null) return '';
+        const str = String(text);
+        if (!labelShort || str.length <= maxLen) return str;
+        return str.slice(0, maxLen) + '…';
+    }
 
     /* ---------- 巡演日程（Schedule） ---------- */
     const SCHED_TYPES = {
@@ -825,9 +838,10 @@
     function buildMarkerElement(s) {
         const el = document.createElement('div');
         el.className = 'spot-marker';
+        el.title = s.name || '';
         el.innerHTML =
             `<span class="spot-dot" style="background:${escapeAttr(spotColor(s))}">${spotEmoji(s)}</span>` +
-            `<span class="spot-name-label">${escapeHtml(s.name || '')}</span>`;
+            `<span class="spot-name-label">${escapeHtml(shortLabel(s.name || ''))}</span>`;
         el.querySelector('.spot-dot').onclick = function (ev) {
             ev.stopPropagation();
             if (pickMode) return;
@@ -862,11 +876,13 @@
     /* ---------- 日程标记 ---------- */
     function buildSchedMarkerElement(ev) {
         const meta = schedTypeMeta(ev);
+        const fullName = ev.title || ev.venue || '';
         const el = document.createElement('div');
         el.className = 'spot-marker sched-marker';
+        el.title = fullName;
         el.innerHTML =
             `<span class="spot-dot" style="background:${meta.color}">${meta.emoji}</span>` +
-            `<span class="spot-name-label">${escapeHtml(ev.title || ev.venue || '')}</span>`;
+            `<span class="spot-name-label">${escapeHtml(shortLabel(fullName))}</span>`;
         el.querySelector('.spot-dot').onclick = function (ev2) {
             ev2.stopPropagation();
             if (pickMode) return;
@@ -1437,6 +1453,18 @@
     const dirCount = document.getElementById('dirCount');
     const dirFilter = document.getElementById('dirFilter');
 
+    /* 地图标签精简开关 */
+    const toggleShortLabel = document.getElementById('toggleShortLabel');
+    if (toggleShortLabel) {
+        toggleShortLabel.checked = labelShort;
+        toggleShortLabel.onchange = function () {
+            labelShort = toggleShortLabel.checked;
+            writeJSON(STORAGE_KEY_LABEL_SHORT, labelShort);
+            renderMarkers();
+            renderScheduleMarkers();
+        };
+    }
+
     dirToggle.onclick = function () {
         const opening = !dirPanel.classList.contains('open');
         dirPanel.classList.toggle('open');
@@ -1989,9 +2017,9 @@
         const foot = document.querySelector('.sched-footer');
         if (foot) {
             const notes = [];
-            if (showHitori) notes.push('Hitorie 演出 · 持续更新补充');
-            if (showMember) notes.push('成员其他演出 · 持续更新补充');
-            foot.textContent = notes.length ? notes.join('　｜　') : '持续更新补充';
+            if (showHitori) notes.push('Hitorie 演出 · 持续更新中');
+            if (showMember) notes.push('成员其他演出 · 持续更新中');
+            foot.textContent = notes.length ? notes.join('　｜　') : '持续更新中';
         }
     }
 
