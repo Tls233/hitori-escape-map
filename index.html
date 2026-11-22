@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hitori-Escape Map｜圣地巡礼 v6</title>
+    <title>Hitori-Escape Map｜圣地巡礼 v7</title>
 
     <!-- MapLibre GL JS（开源矢量地图内核，免 token） -->
     <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
@@ -314,11 +314,41 @@
         .data-btn {
             flex: 1; border: 1px solid rgba(0, 0, 0, .15); background: rgba(0, 0, 0, .04);
             border-radius: 10px; padding: 7px 8px; font-size: 12px; cursor: pointer; color: var(--text);
+            display: flex; align-items: center; justify-content: center; gap: 6px;
         }
         .data-btn:hover { background: rgba(0, 0, 0, .08); }
+        .data-btn .caret { font-size: 10px; opacity: .6; transition: transform .2s; }
+        .data-btn.open .caret { transform: rotate(180deg); }
+        .data-panel {
+            display: none; flex-direction: column; gap: 6px; padding: 2px 12px 8px;
+        }
+        .data-panel.open { display: flex; }
+        .data-sub {
+            text-align: left; border: 1px solid rgba(0, 0, 0, .1); background: rgba(255, 255, 255, .6);
+            border-radius: 8px; padding: 7px 10px; font-size: 12px; cursor: pointer; color: var(--text);
+        }
+        .data-sub:hover { background: rgba(69, 123, 157, .1); }
         .dir-data-hint {
             padding: 0 12px 8px; font-size: 11px; line-height: 1.5; color: var(--text-muted);
         }
+
+        /* 新增 / 编辑面板：地址自动解析 */
+        .parse-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .parse-status { flex: 1; font-size: 11px; line-height: 1.4; color: var(--text-muted); }
+        .parse-status.err { color: #c0392b; }
+        .parse-retry {
+            flex: none; border: 1px solid rgba(0, 0, 0, .15); background: rgba(0, 0, 0, .04);
+            border-radius: 8px; padding: 5px 8px; font-size: 11px; cursor: pointer; color: var(--text);
+        }
+        .parse-retry:disabled { opacity: .6; cursor: default; }
+        #btnReparseEdit { width: 100%; margin-top: 6px; text-align: center; }
+        .name-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .name-chip {
+            border: 1px solid rgba(69, 123, 157, .35); background: rgba(69, 123, 157, .08);
+            border-radius: 12px; padding: 3px 9px; font-size: 11px; cursor: pointer;
+            color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .name-chip.active { background: #457b9d; color: #fff; border-color: #457b9d; }
 
         /* 地区面板内下属地点列表 */
         .region-spots { margin-top: 10px; }
@@ -336,7 +366,7 @@
 <div id="map"></div>
 
 <div class="brand">
-    Hitori-Escape Map <span>圣地巡礼 · v6</span>
+    Hitori-Escape Map <span>圣地巡礼 · v7</span>
 </div>
 
 <div class="search-wrap">
@@ -347,16 +377,6 @@
 </div>
 
 <div class="pick-banner" id="pickBanner">点击地图任意位置定位新地点…</div>
-
-<div class="style-switch">
-    <span>底图</span>
-    <select id="styleSelect">
-        <option value="liberty">OSM 经典（推荐）</option>
-        <option value="positron">浅色简洁</option>
-        <option value="bright">明亮导航风</option>
-    </select>
-    <label><input type="checkbox" id="satelliteToggle"> 卫星</label>
-</div>
 
 <div class="zoom-btns">
     <button id="zoomIn" title="放大">＋</button>
@@ -381,16 +401,17 @@
     </div>
     <div class="dir-search"><input id="dirFilter" type="text" placeholder="筛选：地点 / 地址 / 出处备注（如 MV）" /></div>
     <div class="dir-data-actions">
-        <button id="btnExportSpots" class="data-btn">⬇️ 导出点位</button>
-        <button id="btnImportSpots" class="data-btn">⬆️ 导入点位</button>
-    </div>
-    <div class="dir-data-actions">
-        <button id="btnExportMeta" class="data-btn">⬇️ 导出县备注</button>
-        <button id="btnImportMeta" class="data-btn">⬆️ 导入县备注</button>
+        <button id="btnDataMenu" class="data-btn data-toggle">💾 导入导出数据<span class="caret">▾</span></button>
         <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
         <input type="file" id="importMetaFile" accept=".json,application/json" style="display:none" />
     </div>
-    <div class="dir-data-hint">公共数据来自同目录 spots.json 与 prefectureMeta.json；本机新增 / 修改仅保存在当前浏览器。</div>
+    <div class="data-panel" id="dataPanel">
+        <button id="btnExportSpots" class="data-sub">⬇️ 导出点位（spots.json）</button>
+        <button id="btnImportSpots" class="data-sub">⬆️ 导入点位</button>
+        <button id="btnExportMeta" class="data-sub">⬇️ 导出县备注（prefectureMeta.json）</button>
+        <button id="btnImportMeta" class="data-sub">⬆️ 导入县备注</button>
+    </div>
+    <div class="dir-data-hint">公共数据来自同目录 spots.json 与 prefectureMeta.json。</div>
     <div class="dir-body" id="dirBody"></div>
 </aside>
 
@@ -537,15 +558,11 @@
     /* ============================================================
        3. 地图初始化（MapLibre GL，坐标系 WGS84，[lng, lat]）
        ============================================================ */
-    const STYLE_URLS = {
-        liberty: 'https://tiles.openfreemap.org/styles/liberty',
-        positron: 'https://tiles.openfreemap.org/styles/positron',
-        bright: 'https://tiles.openfreemap.org/styles/bright'
-    };
+    const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'; // OSM 经典
 
     const map = new maplibregl.Map({
         container: 'map',
-        style: STYLE_URLS.liberty,
+        style: STYLE_URL,
         center: [138.0, 36.0],
         zoom: 5,
         attributionControl: true
@@ -663,13 +680,6 @@
             id: 'region-line', type: 'line', source: 'regions',
             paint: { 'line-color': '#457b9d', 'line-width': 1, 'line-opacity': 0.5 }
         });
-
-        map.addSource('satellite', {
-            type: 'raster',
-            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-            tileSize: 256, maxzoom: 19
-        });
-        map.addLayer({ id: 'satellite-layer', type: 'raster', source: 'satellite', layout: { visibility: 'none' } });
 
         bindLayerEvents();
     }
@@ -840,6 +850,7 @@
                 <input class="inp-addr" value="${escapeAttr(spot.address || '')}" />
                 <label>都道府县（坐标自动判定，可在下拉中手动修正）</label>
                 <select class="inp-pref">${prefectureOptions(spot.pref || prefectureAt(spot.lng, spot.lat))}</select>
+                <button type="button" class="parse-retry" id="btnReparseEdit">🔄 用坐标重新解析地址与县份</button>
                 <label>地点分类</label>
                 <select class="inp-cat">${categoryOptions(cat)}</select>
                 <label>标记颜色（默认随分类，可自定义）</label>
@@ -866,6 +877,30 @@
         catSelect.onchange = function () {
             colorInput.value = CATEGORIES[catSelect.value].color;
         };
+
+        const reparseBtn = document.getElementById('btnReparseEdit');
+        if (reparseBtn) {
+            reparseBtn.onclick = function () {
+                const original = reparseBtn.textContent;
+                reparseBtn.disabled = true;
+                reparseBtn.textContent = '解析中…';
+                parseLocation(spot.lng, spot.lat).then(function (info) {
+                    reparseBtn.disabled = false;
+                    reparseBtn.textContent = original;
+                    if (!info.address && !info.pref) {
+                        alert('未能解析到地址，可手动填写');
+                        return;
+                    }
+                    if (info.address) panelContent.querySelector('.inp-addr').value = info.address;
+                    if (info.pref) {
+                        const sel = panelContent.querySelector('.inp-pref');
+                        if (Array.prototype.some.call(sel.options, function (o) { return o.value === info.pref; })) {
+                            sel.value = info.pref;
+                        }
+                    }
+                });
+            };
+        }
 
         document.getElementById('btnSave').onclick = function () {
             spot.name = panelContent.querySelector('.inp-name').value.trim();
@@ -895,7 +930,7 @@
         document.getElementById('btnDelete').onclick = function () { deleteSpot(spot.id); };
     }
 
-    /* ---------- 新增点位：先由地址/地图定位，再手动填写信息 ---------- */
+    /* ---------- 新增点位：坐标自动解析地址 / 县份 / 名称候选 ---------- */
     function renderAddPanel(draft) {
         selectedSpotId = null;
         const lat = draft.lat, lng = draft.lng;
@@ -903,12 +938,17 @@
         panelContent.innerHTML =
             `<div class="edit-form">
                 <div class="panel-badge">新增巡礼地点</div>
-                <label>地点名称（手动输入，例：下北沢 GARAGE）</label>
+                <div class="parse-bar">
+                    <span class="parse-status" id="parseStatus">正在解析该坐标的地址…</span>
+                    <button type="button" class="parse-retry" id="btnReparse">🔄 重新解析</button>
+                </div>
+                <label>地点名称（可点下方候选，或手动输入）</label>
                 <input class="inp-name" placeholder="例：下北沢 GARAGE" value="${escapeAttr(draft.name || '')}" />
-                <label>地址 / 邮编（可编辑修正）</label>
+                <div class="name-chips" id="nameChips"></div>
+                <label>地址 / 邮编（自动解析，可编辑修正）</label>
                 <input class="inp-addr" value="${escapeAttr(draft.address || '')}" />
-                <label>都道府县（坐标自动判定，可在下拉中修正）</label>
-                <select class="inp-pref">${prefectureOptions(prefectureAt(lng, lat))}</select>
+                <label>都道府县（自动判定，可在下拉中修正）</label>
+                <select class="inp-pref">${prefectureOptions(draft.pref || prefectureAt(lng, lat))}</select>
                 <div class="panel-addr">坐标：${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
                 <label>地点分类</label>
                 <select class="inp-cat">${categoryOptions(initCat)}</select>
@@ -931,17 +971,62 @@
         const catSelect = panelContent.querySelector('.inp-cat');
         const colorInput = panelContent.querySelector('.inp-color');
         const photoArea = setupPhotoArea(panelContent.querySelector('#photoArea'), []);
+        const nameInput = panelContent.querySelector('.inp-name');
+        const addrInput = panelContent.querySelector('.inp-addr');
+        const prefSelect = panelContent.querySelector('.inp-pref');
+        const statusEl = document.getElementById('parseStatus');
+        const chipsEl = document.getElementById('nameChips');
 
         catSelect.onchange = function () {
             colorInput.value = CATEGORIES[catSelect.value].color;
         };
+
+        function setStatus(msg, isErr) {
+            statusEl.textContent = msg;
+            statusEl.classList.toggle('err', !!isErr);
+        }
+
+        function renderChips(names) {
+            chipsEl.innerHTML = '';
+            names.forEach(function (n) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'name-chip';
+                b.textContent = n;
+                b.onclick = function () {
+                    nameInput.value = n;
+                    chipsEl.querySelectorAll('.name-chip').forEach(function (x) { x.classList.remove('active'); });
+                    b.classList.add('active');
+                };
+                chipsEl.appendChild(b);
+            });
+        }
+
+        async function runParse(autoFillName, force) {
+            setStatus('正在解析该坐标的地址…');
+            const hadAddr = !!addrInput.value.trim();
+            const info = await parseLocation(lat, lng);
+            if (info.address && (!hadAddr || force)) addrInput.value = info.address;
+            if (info.pref) {
+                const has = Array.prototype.some.call(prefSelect.options, function (o) { return o.value === info.pref; });
+                if (has) prefSelect.value = info.pref;
+            }
+            renderChips(info.names);
+            if (autoFillName && !nameInput.value.trim() && info.names.length) {
+                nameInput.value = info.names[0];
+            }
+            if (info.address) setStatus('已自动解析地址，可直接修改或选候选名称');
+            else setStatus('该坐标附近没有可解析的地址，可手动填写或换更靠近街道的位置', true);
+        }
+
+        document.getElementById('btnReparse').onclick = function () { runParse(false, true); };
+        runParse(true, false);
 
         document.getElementById('btnSaveAdd').onclick = function () {
             const name = panelContent.querySelector('.inp-name').value.trim();
             const address = panelContent.querySelector('.inp-addr').value.trim();
             if (!name) { alert('请填写地点名称'); return; }
             const category = catSelect.value;
-            const prefSelect = panelContent.querySelector('.inp-pref');
             let color = colorInput.value.toLowerCase();
             if (color === CATEGORIES[category].color) color = '';
             const spot = {
@@ -1133,6 +1218,17 @@
 
     dirFilter.addEventListener('input', function () { renderDirectory(dirFilter.value); });
 
+    /* 导入 / 导出数据面板（默认收起） */
+    const btnDataMenu = document.getElementById('btnDataMenu');
+    const dataPanel = document.getElementById('dataPanel');
+    if (btnDataMenu && dataPanel) {
+        btnDataMenu.onclick = function (ev) {
+            ev.stopPropagation();
+            dataPanel.classList.toggle('open');
+            btnDataMenu.classList.toggle('open', dataPanel.classList.contains('open'));
+        };
+    }
+
     /* 导出 / 导入点位 JSON */
     const btnExportSpots = document.getElementById('btnExportSpots');
     const btnImportSpots = document.getElementById('btnImportSpots');
@@ -1165,6 +1261,7 @@
        ============================================================ */
     function bindLayerEvents() {
         map.on('click', 'region-fill', function (e) {
+            if (pickMode || suppressRegionClick) return; // 选点模式下不触发县面板
             const p = e.features[0].properties || {};
             renderRegionPanel(p.name || p.nam_ja || p.pref || '不明');
         });
@@ -1176,6 +1273,7 @@
 
     const pickBanner = document.getElementById('pickBanner');
     const addOnMapBtn = document.getElementById('addOnMapBtn');
+    let suppressRegionClick = false; // 选点后同一次点击不再触发县面板
 
     function enterPickMode() {
         pickMode = true;
@@ -1193,9 +1291,10 @@
         if (pickMode) {
             const lng = e.lngLat.lng, lat = e.lngLat.lat;
             exitPickMode();
-            reverseGeocode(lat, lng).then(function (addr) {
-                renderAddPanel({ lat: lat, lng: lng, address: addr || '', name: '' });
-            });
+            suppressRegionClick = true;
+            setTimeout(function () { suppressRegionClick = false; }, 0);
+            // 面板打开后自动解析地址与县份
+            renderAddPanel({ lat: lat, lng: lng, address: '', name: '' });
             return;
         }
         const hit = map.queryRenderedFeatures(e.point, { layers: ['region-fill'] });
@@ -1345,15 +1444,8 @@
     });
 
     /* ============================================================
-       8. 底图样式 / 卫星叠加 / 缩放
+       8. 缩放（底图固定为 OSM 经典，不再提供切换）
        ============================================================ */
-    document.getElementById('styleSelect').onchange = function (e) {
-        map.setStyle(STYLE_URLS[e.target.value]);
-    };
-    document.getElementById('satelliteToggle').onchange = function (e) {
-        const layer = map.getLayer('satellite-layer');
-        if (layer) map.setLayoutProperty('satellite-layer', 'visibility', e.target.checked ? 'visible' : 'none');
-    };
     document.getElementById('zoomIn').onclick = function () { map.zoomIn(); };
     document.getElementById('zoomOut').onclick = function () { map.zoomOut(); };
 
@@ -1364,6 +1456,7 @@
     const searchInput = document.getElementById('searchInput');
     const searchStatus = document.getElementById('searchStatus');
     const searchResultBox = document.getElementById('searchResultBox');
+    let searchToken = 0; // 用于丢弃过期的搜索结果
 
     function setStatus(msg, isErr) {
         searchStatus.textContent = msg || '';
@@ -1382,36 +1475,145 @@
         });
     }
 
+    /* 日语 / 日本邮编查询：优先限定在日本范围内搜索，避免出现南美等地同名结果 */
+    const JP_BBOX = '122,20,154,46'; // minLon,minLat,maxLon,maxLat
+    function looksJapanese(q) {
+        return /[ぁ-んァ-ヶ一-龥]/.test(q) || /〒/.test(q);
+    }
+
     async function geocodePhoton(q) {
-        const res = await fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=6');
-        if (!res.ok) throw new Error('Photon 接口返回 HTTP ' + res.status);
-        const data = await res.json();
-        return (data.features || []).map(function (f) {
+        let url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=6';
+        if (looksJapanese(q)) url += '&bbox=' + JP_BBOX;
+        const data = await fetchJSON(url, 8000);
+        const feats = data.features || [];
+        return feats.map(function (f) {
             const p = f.properties || {};
             const addr = [p.street, p.locality || p.district || p.city, p.state, p.country]
                 .filter(Boolean).join(' · ');
-            return { name: p.name || addr || q, address: addr, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] };
+            return {
+                name: p.name || addr || q,
+                address: addr,
+                lat: f.geometry.coordinates[1],
+                lng: f.geometry.coordinates[0],
+                jp: p.countrycode === 'JP'
+            };
         });
     }
 
     async function geocodeNominatim(q) {
-        const res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&q=' +
-            encodeURIComponent(q) + '&limit=6&accept-language=ja');
-        if (!res.ok) throw new Error('Nominatim 接口返回 HTTP ' + res.status);
-        const arr = await res.json();
+        let url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&q=' +
+            encodeURIComponent(q) + '&limit=6&accept-language=ja';
+        if (looksJapanese(q)) url += '&countrycodes=jp';
+        const arr = await fetchJSON(url, 8000);
         return (arr || []).map(function (r) {
             return { name: r.name || (r.display_name || q).split(',')[0], address: r.display_name || '', lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
         });
     }
 
+    /* ---------- 坐标 → 地址自动解析（Photon reverse 优先，Nominatim 兜底） ---------- */
+    function buildJpAddress(p) {
+        const prefSet = (typeof PREF_NAMES !== 'undefined') ? PREF_NAMES : [];
+        const cand = [p.state, p.city, p.county].filter(Boolean);
+        const pref = cand.filter(function (v) { return prefSet.indexOf(v) !== -1; })[0] || p.state || p.city || '';
+
+        const parts = [];
+        if (p.postcode) parts.push('〒' + String(p.postcode).replace(/^〒/, ''));
+        if (pref) parts.push(pref);
+        [p.city, p.district, p.locality].forEach(function (v) {
+            if (v && v !== pref && parts.indexOf(v) === -1) parts.push(v);
+        });
+
+        let tail = '';
+        if (p.street) {
+            if (/^[0-9０-９]/.test(p.street)) tail = p.street + (p.housenumber ? '-' + p.housenumber : '');
+            else {
+                parts.push(p.street);
+                if (p.housenumber) tail = p.housenumber;
+            }
+        } else if (p.housenumber) {
+            tail = p.housenumber;
+        }
+        return (parts.some(function (v) { return /[A-Za-z]/.test(v); })
+            ? parts.join(', ') + (tail ? ', ' + tail : '')
+            : parts.join('') + tail);
+    }
+
+    async function parsePhoton(lat, lng) {
+        const res = await fetch('https://photon.komoot.io/reverse?lat=' + lat + '&lon=' + lng + '&limit=6');
+        if (!res.ok) throw new Error('Photon HTTP ' + res.status);
+        const data = await res.json();
+        return (data.features || []).map(function (f) {
+            const p = f.properties || {};
+            return {
+                address: buildJpAddress(p),
+                pref: (function () {
+                    const prefSet = (typeof PREF_NAMES !== 'undefined') ? PREF_NAMES : [];
+                    const cand = [p.state, p.city, p.county].filter(Boolean);
+                    return cand.filter(function (v) { return prefSet.indexOf(v) !== -1; })[0] || '';
+                })(),
+                name: p.name || '',
+                street: p.street || '',
+                city: p.city || p.county || '',
+                poi: !!(p.osm_key && p.osm_value)
+            };
+        });
+    }
+
+    async function parseNominatim(lat, lng) {
+        const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=ja&lat=' +
+            lat + '&lon=' + lng);
+        if (!res.ok) throw new Error('Nominatim HTTP ' + res.status);
+        const data = await res.json();
+        const a = data.address || {};
+        const parts = [];
+        if (a.postcode) parts.push('〒' + a.postcode);
+        [a.state, a.city || a.town || a.village, a.city_district || a.suburb || a.quarter, a.neighbourhood, a.road].forEach(function (v) {
+            if (v) parts.push(v);
+        });
+        if (a.house_number) parts[parts.length - 1] = (parts[parts.length - 1] || '') + a.house_number;
+        const names = [data.name, a.amenity, a.shop, a.tourism, a.leisure, a.road]
+            .filter(Boolean);
+        return [{
+            address: parts.join('') || data.display_name || '',
+            pref: a.state || '',
+            name: data.name || a.amenity || a.shop || a.tourism || a.leisure || '',
+            street: a.road || '',
+            city: a.city || a.town || a.village || '',
+            poi: !!(a.amenity || a.shop || a.tourism || a.leisure),
+            extraNames: names
+        }];
+    }
+
+    /* 返回 { address, pref, names[] }；失败时各字段为空 */
+    async function parseLocation(lat, lng) {
+        let rows = [];
+        try { rows = await parsePhoton(lat, lng); } catch (e) { rows = []; }
+        if (!rows.length || !rows.some(function (r) { return r.address; })) {
+            try { rows = rows.concat(await parseNominatim(lat, lng)); } catch (e2) { /* 离线时静默 */ }
+        }
+        const withAddr = rows.filter(function (r) { return r.address; });
+        const best = withAddr[0] || rows[0] || {};
+
+        const names = [];
+        rows.slice().sort(function (a, b) {
+            return (b.poi ? 1 : 0) - (a.poi ? 1 : 0);
+        }).forEach(function (r) {
+            (r.extraNames || []).concat([r.name]).forEach(function (n) {
+                const v = (n || '').trim();
+                if (v && v !== best.pref && names.indexOf(v) === -1) names.push(v);
+            });
+        });
+
+        return {
+            address: best.address || '',
+            pref: best.pref || '',
+            names: names.slice(0, 6)
+        };
+    }
+
     async function reverseGeocode(lat, lng) {
-        try {
-            const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
-                lat + '&lon=' + lng + '&accept-language=ja');
-            if (!res.ok) return '';
-            const data = await res.json();
-            return data.display_name || '';
-        } catch (e) { return ''; }
+        const r = await parseLocation(lat, lng);
+        return r.address;
     }
 
     function renderResults(results) {
@@ -1434,23 +1636,23 @@
         setStatus('');
     }
 
-    async function geocodeAll(q) {
-        let results = [];
-        let lastErr = null;
-        try { results = await geocodePhoton(q); } catch (e) { lastErr = e; }
-        if (!results.length) {
-            try { results = await geocodeNominatim(q); } catch (e2) { lastErr = lastErr || e2; }
-        }
-        if (!results.length) {
-            const half = toHalfWidthDigits(q);
-            if (half !== q) {
-                try { results = await geocodePhoton(half); } catch (e) { lastErr = lastErr || e; }
-                if (!results.length) {
-                    try { results = await geocodeNominatim(half); } catch (e2) { lastErr = lastErr || e2; }
-                }
-            }
-        }
-        return { results: results, lastErr: lastErr };
+    /* 带超时的 JSON 请求，避免某个地理编码服务卡住整个搜索 */
+    function fetchJSON(url, timeout) {
+        return new Promise(function (resolve, reject) {
+            const ctrl = new AbortController();
+            const timer = setTimeout(function () { ctrl.abort(); reject(new Error('请求超时')); }, timeout || 8000);
+            fetch(url, { signal: ctrl.signal }).then(function (res) {
+                clearTimeout(timer);
+                if (!res.ok) { reject(new Error('HTTP ' + res.status)); return; }
+                res.json().then(resolve, function (e) { reject(e); });
+            }, function (e) { clearTimeout(timer); reject(e); });
+        });
+    }
+
+    function filterJP(list, jpQuery) {
+        if (!jpQuery) return list;
+        const jpOnly = list.filter(function (r) { return r.jp; });
+        return jpOnly.length ? jpOnly : list;
     }
 
     async function doSearch() {
@@ -1460,16 +1662,45 @@
         setStatus('地址解析中…', false);
 
         const q = cleanQuery(raw);
-        const out = await geocodeAll(q);
-        const results = out.results;
+        const jp = looksJapanese(q);
+        const token = ++searchToken;
 
-        if (!results.length) {
-            if (out.lastErr) setStatus('搜索请求失败：' + (out.lastErr.message || out.lastErr) + '（请检查网络后重试）', true);
-            else setStatus('未找到该地址，可粘贴完整邮编+地址，或改用地图选点', true);
+        // 两个数据源并行：Photon 快，Nominatim 对日本门牌地址更准
+        const photonP = geocodePhoton(q).catch(function () { return []; });
+        const nomiP = geocodeNominatim(q).catch(function () { return []; });
+
+        let results = filterJP(await photonP, jp);
+        if (token !== searchToken) return;
+        if (results.length) {
+            renderResults(results);
+            setStatus('找到 ' + results.length + ' 个位置' + (jp ? '（快速匹配中，正在用门牌地址库核对…）' : '，选择后再填写地点名'), false);
+        }
+
+        const nomi = await nomiP;
+        if (token !== searchToken) return;
+        if (nomi.length) {
+            results = nomi;
+            renderResults(results);
+            setStatus('已用门牌地址库匹配，找到 ' + results.length + ' 个位置，选择后再填写地点名', false);
             return;
         }
-        setStatus('找到 ' + results.length + ' 个位置，选择后再填写地点名', false);
-        renderResults(results);
+        if (results.length) {
+            setStatus('找到 ' + results.length + ' 个位置，选择后再填写地点名', false);
+            return;
+        }
+
+        // 兜底：全角数字转半角后重试
+        const half = toHalfWidthDigits(q);
+        if (half !== q) {
+            const r2 = filterJP(await geocodePhoton(half).catch(function () { return []; }), jp);
+            if (token !== searchToken) return;
+            if (r2.length) {
+                renderResults(r2);
+                setStatus('找到 ' + r2.length + ' 个位置，选择后再填写地点名', false);
+                return;
+            }
+        }
+        setStatus('未找到该地址，可粘贴完整邮编+地址，或改用地图选点添加', true);
     }
 
     searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
