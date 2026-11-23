@@ -379,7 +379,7 @@
         .region-spot-item:hover { background: rgba(69, 123, 157, .1); }
         .region-spot-item small { display: block; color: var(--text-muted); font-size: 11px; margin-top: 2px; }
 
-        /* ===== 巡演日程（右侧独立抽屉） ===== */
+        /* ===== 演出日程（右侧独立抽屉） ===== */
         .sched-toggle-btn { top: 220px; }
         .sched-drawer {
             position: absolute; top: 0; right: 0; width: 420px; max-width: 94vw;
@@ -561,10 +561,10 @@
     <div class="dir-body" id="dirBody"></div>
 </aside>
 
-<button class="dir-toggle-btn sched-toggle-btn" id="schedToggle">📅 巡演日程</button>
+<button class="dir-toggle-btn sched-toggle-btn" id="schedToggle">📅 演出日程</button>
 <aside class="sched-drawer" id="schedPanel">
     <div class="sched-drawer-header">
-        <div><strong>巡演日程</strong><span id="schedCount"></span></div>
+        <div><strong>演出日程</strong><span id="schedCount"></span></div>
         <button id="schedClose">✕</button>
     </div>
     <div class="sched-drawer-body">
@@ -685,7 +685,7 @@
         return str.slice(0, maxLen) + '…';
     }
 
-    /* ---------- 巡演日程（Schedule） ---------- */
+    /* ---------- 演出日程（Schedule） ---------- */
     const SCHED_TYPES = {
         hitori: { label: 'Hitorie 演出', color: '#d62828', emoji: '🎫' },
         member: { label: '成员其他演出', color: '#2a9d8f', emoji: '🎫' }
@@ -1882,7 +1882,7 @@
         reader.readAsText(file, 'utf-8');
     }
 
-    /* ---------- 巡演日程：加载 / 导入导出 / 面板 ---------- */
+    /* ---------- 演出日程：加载 / 导入导出 / 面板 ---------- */
     function pad(n) { return String(n).padStart(2, '0'); }
     function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
